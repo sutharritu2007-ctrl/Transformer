@@ -9,14 +9,12 @@
             "48":"48.png",
             "128":"128.png"
         },
-        "default_popup":"popup.html"
+        "default_popup":"popup/popup.html"
     },
     "permissions": [
     "activeTab",
     "scripting",
     "storage"
-  ],
-  "host_permission":[
-    "<all_urls>"
   ]
+  
 }
