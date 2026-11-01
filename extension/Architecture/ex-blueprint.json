@@ -1,0 +1,27 @@
+{
+  "v": "0.1",
+  "meta": { "host": "example.org", "title": "example", "dir": "ltr",
+            "viewport": [1440, 900], "scroll": [0, 0], "docSize": [1440, 12400], "epoch": 1 },
+  "limits": { "maxNodes": 1500, "nodesVisited": 2210, "nodesKept": 640 },
+  "warnings": [ { "code": "text-truncated" }, { "code": "opaque-frame", "node": "e88" } ],
+  "root": "e1",
+  "nodes": {
+    "e1":  { "t": "body", "c": ["e2", "e5", "e9"], "bx": [0,0,1440,12400], "v": "visible", "st": "s1" },
+    "e2":  { "t": "header", "r": "banner", "c": ["e3"], "bx": [0,0,1440,64], "v": "visible", "pos": "sticky", "st": "s2" },
+    "e3":  { "t": "a", "ik": "link", "lk": "internal", "n": "Home", "bx": [24,20,60,24], "v": "visible", "st": "s3" },
+    "e9":  { "t": "main", "r": "main", "c": ["e10"], "omit": 310, "bx": [220,64,1000,12300], "v": "visible", "st": "s1" },
+    "e10": { "t": "h1", "r": "heading", "lv": 1, "tx": "Spider-Man", "tl": 10, "bx": [240,90,400,44], "v": "visible", "st": "s4" },
+    "e88": { "t": "iframe", "p": "frame", "bx": [240,600,560,315], "v": "visible" }
+  },
+  "styles": {
+    "s1": { "display": "block", "font": "Georgia", "fs": 16, "fw": 400, "color": "#202122", "bg": "#ffffff" },
+    "s4": { "display": "block", "font": "Georgia", "fs": 32, "fw": 700, "color": "#000000", "bg": "transparent" }
+  },
+  "inferred": {
+    "regions": [
+      { "id": "r1", "role": "header", "nodes": ["e2"], "conf": "high", "ev": ["tag:header", "pos:sticky", "geo:fullwidth-top"] },
+      { "id": "r2", "role": "main",   "nodes": ["e9"], "conf": "high", "ev": ["tag:main", "stat:text-dense"] }
+    ],
+    "groups": []
+  }
+}

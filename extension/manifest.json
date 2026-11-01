@@ -1,20 +1,21 @@
+
 {
-    "manifest_version":3,
-    "name":"transformer",
-    "version":"0.1.0",
-    "description":"an AI-powered browser extension that transforms any webpage's UI based on natural-language instructions.",
-    "action":{
-        "default_icons":{
-            "16":"16.png",
-            "48":"48.png",
-            "128":"128.png"
-        },
-        "default_popup":"popup/popup.html"
-    },
-    "permissions": [
+  "manifest_version": 3,
+  "name": "Transformer",
+  "version": "0.1.0",
+  "description": "An AI-powered browser extension that transforms webpage UIs using natural-language instructions.",
+  "action": {
+    "default_popup": "popup/popup.html"
+  },
+  "permissions": [
     "activeTab",
     "scripting",
     "storage"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["content/content.js"]
+    }
   ]
-  
 }

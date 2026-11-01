@@ -24,4 +24,13 @@ header{
     border-radius: 15px;
     margin-left: 400px;
 }
+#submit,#inspect{
+    height:30px;
+    text-align: center;
+    justify-content: center;
+    border-radius: 15px;
+    margin-left: 450px;
+}
+
+
 
