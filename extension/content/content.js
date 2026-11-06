@@ -13,15 +13,12 @@
             return;
         }
 
-        const result = {
-            title: document.title,
-            url: location.origin,
-            elementCount: document.querySelectorAll("*").length
-        };
-
-        sendResponse({
-            success: true,
-            data: result
-        });
+        try {
+            const { blueprint } = globalThis.TransformerInspector.inspect();
+            sendResponse({ success: true, data: blueprint });
+        } catch (error) {
+            console.error("Transformer inspection error:", error);
+            sendResponse({ success: false, error: error.message });
+        }
     });
 })();

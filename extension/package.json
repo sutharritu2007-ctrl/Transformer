@@ -1,0 +1,9 @@
+{
+  "private": true,
+  "scripts": {
+    "build:inspector": "esbuild Architecture/inspect.js --bundle --format=iife --global-name=TransformerInspector --target=chrome120 --outfile=content/inspector.bundle.js"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0"
+  }
+}

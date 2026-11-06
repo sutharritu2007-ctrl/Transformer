@@ -56,9 +56,14 @@ function getChildElements(el) {
  * @param {object}  options.registry   from createRegistry()
  * @param {number}  options.maxNodes   stop recording after this many elements
  * @param {number}  options.maxDepth   do not descend below this depth
+ * @param {function} options.onRecord  optional hook, called once per new record
+ *        as (record, parentRecord|null) BEFORE the record's children are
+ *        visited. It may add fields to the record, and may set
+ *        `record.descend = false` to prune the subtree (e.g. display:none).
+ *        This is how geometry, styles and text are collected in ONE pass.
  * @returns {{ records: object[], stats: object, warnings: object[] }}
  */
-export function traverse(root, { registry, maxNodes = 1500, maxDepth = 60 } = {}) {
+export function traverse(root, { registry, maxNodes = 1500, maxDepth = 60, onRecord = null } = {}) {
   if (!registry) throw new Error('traverse() needs a registry');
 
   const t0 = performance.now();
@@ -96,6 +101,7 @@ export function traverse(root, { registry, maxNodes = 1500, maxDepth = 60 } = {}
     records.push(rec);
     if (depth > stats.maxDepthSeen) stats.maxDepthSeen = depth;
     if (decision.protect === 'frame') warnings.push({ code: 'opaque-frame', node: rec.id });
+    if (onRecord) onRecord(rec, parent >= 0 ? records[parent] : null);
     return rec;
   };
 

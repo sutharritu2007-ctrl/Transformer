@@ -22,14 +22,29 @@ header{
     text-align: center;
     justify-content: center;
     border-radius: 15px;
-    margin-left: 400px;
+    display: block;
+    margin: 0 auto;
 }
-#submit,#inspect{
+#submit,#inspect,#download{
     height:30px;
     text-align: center;
     justify-content: center;
     border-radius: 15px;
-    margin-left: 450px;
+    display: block;
+    margin: 8px auto;
+    cursor: pointer;
+}
+
+button:disabled{
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+#status{
+    min-height: 1.2em;
+    margin: 12px;
+    text-align: center;
+    color: #231942;
 }
 
 
