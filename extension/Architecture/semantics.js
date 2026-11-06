@@ -40,6 +40,32 @@ const SKIP_TEXT_TAGS = new Set(['script', 'style', 'noscript', 'template']);
 
 const clean = (s) => (s || '').replace(/\s+/g, ' ').trim();
 
+function looksLikeMetadata(value) {
+  const s = clean(value);
+  if (!s || s.length < 8) return false;
+
+  if ((s.startsWith('{') && s.endsWith('}')) || (s.startsWith('[') && s.endsWith(']'))) {
+    const hasQuotedKey = /["']\s*\w+\s*["']\s*:/.test(s);
+    const hasComma = s.includes(',');
+    if (hasQuotedKey && hasComma) return true;
+  }
+
+  if (/(?:^|[,{\s])(?:color|size|variant|sku|product|item|mainColorId|colorId|sizeId|styleId|option|selected|select)["'\s:]/i.test(s)) {
+    const hasJsonLikeColon = s.includes(':') && s.includes(',');
+    const hasNumberishPair = /\b\w+Id\b\s*:/i.test(s) || /\b\w+\s*:\s*(?:\d+|true|false|null|["'])/i.test(s);
+    if (hasJsonLikeColon || hasNumberishPair) return true;
+  }
+
+  return false;
+}
+
+function sanitizeName(value) {
+  const s = clean(value);
+  if (!s) return '';
+  if (looksLikeMetadata(s)) return '';
+  return s;
+}
+
 // Cut to a cap without leaving half of an emoji (a lone surrogate) at the end.
 function cut(text, cap) {
   if (text.length <= cap) return text;
@@ -246,9 +272,10 @@ export function annotate(rec, ctx) {
 
   if (ik || tag === 'img' || NAMED_ROLES.has(role)) {
     const full = accessibleName(el, tag, ik, role);
-    if (full) {
-      if (full.length > NAME_CAP) ctx.warn('text-truncated');
-      const name = cut(full, NAME_CAP);
+    const safe = sanitizeName(full);
+    if (safe) {
+      if (safe.length > NAME_CAP) ctx.warn('text-truncated');
+      const name = cut(safe, NAME_CAP);
       if (name !== rec.tx) rec.n = name; // only record names that add information
     }
   }

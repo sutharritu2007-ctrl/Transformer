@@ -1,9 +1,12 @@
 {
   "private": true,
   "scripts": {
-    "build:inspector": "esbuild Architecture/inspect.js --bundle --format=iife --global-name=TransformerInspector --target=chrome120 --outfile=content/inspector.bundle.js"
+    "build:inspector": "esbuild Architecture/inspect.js --bundle --format=iife --global-name=TransformerInspector --target=chrome120 --outfile=content/inspector.bundle.js",
+    "test:node": "node --test Architecture/inference-regression.test.mjs",
+    "test:browser": "npm run build:inspector && playwright test Architecture/browser-group-regression.spec.js"
   },
   "devDependencies": {
-    "esbuild": "^0.25.0"
+    "esbuild": "^0.25.0",
+    "playwright": "^1.65.0"
   }
 }

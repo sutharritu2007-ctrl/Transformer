@@ -5,7 +5,6 @@
 **Status:** DRAFT (Phase A, not yet frozen)
 **Audience:** me, while building; a future reviewer who needs to understand why each field exists
 
-> This is a living document. Edit freely. When a decision changes, update the field table **and** add a line to the Changelog and the Decision Log.
 
 ---
 
@@ -21,6 +20,8 @@
 | Date | Change |
 |---|---|
 | 2026-10-28 | Initial v0.1 draft from the Phase A design discussion |
+| 2026-11-06 | Phase 3a: repeated-component sampling (`rep` on nodes, `repeats-sampled` warning), hard time budget (`maxMs`, `budget-time` warning) |
+| 2026-10-30 | Phase 2 implementation adjustments: absent `v` means visible; `sr` may be `"closed"`; `ik` gains `other`; `limits.totalElements` added; `pos` limited to fixed/sticky/absolute |
 
 ---
 
@@ -102,7 +103,7 @@ Nothing in the schema names a page type or a site. Unfamiliar pages are describe
 | `meta.epoch` | Integer identifying this snapshot. All element IDs are valid only within one epoch | counter in the content script | none | **v0.1** |
 | `meta.colorScheme` | Light or dark page | computed `color-scheme` or background luminance | cheap | **Later** |
 | `meta.dpr` | Device pixel ratio | `devicePixelRatio` | none | **Cut.** Nothing consumes it |
-| `limits` | Budgets applied (`maxNodes`, `maxDepth`, `timeMs`) plus counts (`nodesVisited`, `nodesKept`) | config + counters | tiny | **v0.1.** Lets the planner tell "page is small" from "inspection was cut off" |
+| `limits` | Budgets applied (`maxNodes`, `maxDepth`, `maxMs`) plus counts (`nodesVisited`, `nodesKept`, `totalElements`: the subtree's real element count, so a cut-off page is visible as `nodesKept` far below `totalElements`) | config + counters | tiny | **v0.1.** Lets the planner tell "page is small" from "inspection was cut off" |
 | `warnings[]` | `{ code, node? }` entries from a closed vocabulary (section 11) | emitted by modules | tiny | **v0.1** |
 
 **Why viewport, scroll and docSize together:** boxes are in page coordinates, so with these three values anyone can derive "is this element in view" without a separate `inView` field.
@@ -125,7 +126,7 @@ Nodes live in a **flat map keyed by ID**, with a `root` pointer. The structure i
 | `tx` | Snippet of the node's **own direct text** | direct text-node children only | **Highest privacy cost in the schema**, plus size | **v0.1**, capped by element kind (section 7) |
 | `tl` | Full own-text length | same | tiny | **v0.1.** Lets the planner know a paragraph is long without reading it |
 | `bx` | `[x, y, w, h]` in **page** coordinates, integers | `getBoundingClientRect` + scroll offset | The main performance cost (layout read) | **v0.1** |
-| `v` | Visibility: `visible`, `hidden` (display none, visibility hidden, opacity 0), `zero` (zero-size) | computed style + box | cheap once style is read | **v0.1** |
+| `v` | Visibility: `hidden` (display none, visibility hidden, opacity 0 on the node or an ancestor), `zero` (zero-size box). **Absent means visible**: omitting the default saves roughly 15 bytes on most nodes | computed style + box | cheap once style is read | **v0.1** |
 | `pos` | Computed position, **only when not static** (`fixed`, `sticky`, `absolute`) | computed style | cheap | **v0.1.** Fixed and sticky are how headers, banners and overlays reveal themselves |
 | `st` | Reference into the style table | interning | see section 8 | **v0.1** |
 | `ik` | Interactive kind: `button`, `link`, `text`, `email`, `password`, `checkbox`, `radio`, `select`, `textarea`, `file`, `submit`, `summary`... | tag + `type` attribute | tiny | **v0.1.** Native controls only. Observed |
@@ -133,8 +134,9 @@ Nodes live in a **flat map keyed by ID**, with a `root` pointer. The structure i
 | `req` | Required | attribute | tiny | **v0.1** |
 | `lk` | Link kind: `internal`, `external`, `anchor`, `mail`, `tel`, `other`. Computed by comparing `href` to the current location | spec-derived | tiny | **v0.1.** Replaces storing URLs, which can carry tokens |
 | `p` | **Protected:** content withheld, with the reason (section 6) | attribute checks | removes cost | **v0.1.** Tells the planner "something is here that you cannot see" |
-| `sr` | `"open"` on shadow hosts, meaning children came from a shadow root | `element.shadowRoot` | cheap | **v0.1.** Styling and targeting behave differently inside shadow trees |
+| `sr` | `"open"` or `"closed"` on shadow hosts, meaning children came from a shadow root (closed roots are only reachable through the extension API) | `element.shadowRoot` | cheap | **v0.1.** Styling and targeting behave differently inside shadow trees |
 | `omit` | Count of children dropped by a budget | counter | tiny | **v0.1.** Truncation must be visible per node, not only in `warnings` |
+| `rep` | Count of children **sampled out** because they repeat kept siblings of the same shape (product cards, feed items, table rows). Distinct from `omit`: no structure was lost, the kept siblings are representative | fingerprint of tag + class + child tags; only for sibling lists over 12 whose items each have 2+ element children | tiny | **v0.1.** Never applied to leaf-like siblings, so article paragraphs and nav links are not sampled. Phase 5 groups will formalize this with a count and an exemplar |
 
 ### Why `p`, `omit`, `limits`, `warnings` exist
 
@@ -297,6 +299,7 @@ Keep these lists in sync with the code. Adding a value is a schema change.
 | `budget-time` | Time budget hit; inspection partial |
 | `budget-depth` | Depth cap hit |
 | `text-truncated` | One or more text snippets capped |
+| `repeats-sampled` | Repeated sibling components were sampled (see `rep` on the parent nodes) |
 | `opaque-frame` | An iframe was not inspected |
 | `closed-shadow` | A closed shadow root could not be inspected |
 | `no-landmarks` | No convincing region found |
@@ -327,7 +330,7 @@ Keep these lists in sync with the code. Adding a value is a schema change.
 
 ### Interactive kinds (`ik`)
 
-`button`, `link`, `text`, `email`, `password`, `checkbox`, `radio`, `select`, `textarea`, `file`, `submit`, `summary`
+`button`, `link`, `text`, `email`, `password`, `checkbox`, `radio`, `select`, `textarea`, `file`, `submit`, `summary`, `other` (native controls with no better label, such as range and color inputs)
 
 ### Link kinds (`lk`)
 
@@ -350,6 +353,7 @@ Do not treat these as final. Measure real baselines in Phase 2, then revise.
 | `maxNodes` | 1500 |
 | `maxDepth` | OPEN |
 | Time per slice | OPEN (yield between chunks) |
+| Hard time limit (`maxMs`) | 250 ms provisional. The walk stops and emits `budget-time`; tune after the baseline table |
 | Medium-page first pass | ~300 ms or less |
 | Medium-page blueprint size | ~100 KB or less |
 | Repeat/incremental inspection | under ~20% of first pass |
@@ -358,6 +362,49 @@ When a budget is hit: prioritize viewport-visible content and high-confidence re
 
 ---
 
+## 14. Example (trimmed)
+
+```json
+{
+  "v": "0.1",
+  "meta": {
+    "host": "example.org",
+    "title": "Spider-Man",
+    "dir": "ltr",
+    "viewport": [1440, 900],
+    "scroll": [0, 0],
+    "docSize": [1440, 12400],
+    "epoch": 1
+  },
+  "limits": { "maxNodes": 1500, "nodesVisited": 2210, "nodesKept": 640 },
+  "warnings": [
+    { "code": "text-truncated" },
+    { "code": "opaque-frame", "node": "e88" }
+  ],
+  "root": "e1",
+  "nodes": {
+    "e1":  { "t": "body", "c": ["e2", "e9"], "bx": [0, 0, 1440, 12400], "v": "visible", "st": "s1" },
+    "e2":  { "t": "header", "r": "banner", "c": ["e3"], "bx": [0, 0, 1440, 64], "v": "visible", "pos": "sticky", "st": "s2" },
+    "e3":  { "t": "a", "ik": "link", "lk": "internal", "n": "Home", "bx": [24, 20, 60, 24], "v": "visible", "st": "s3" },
+    "e9":  { "t": "main", "r": "main", "c": ["e10", "e88"], "omit": 310, "bx": [220, 64, 1000, 12300], "v": "visible", "st": "s1" },
+    "e10": { "t": "h1", "r": "heading", "lv": 1, "tx": "Spider-Man", "tl": 10, "bx": [240, 90, 400, 44], "v": "visible", "st": "s4" },
+    "e88": { "t": "iframe", "p": "frame", "bx": [240, 600, 560, 315], "v": "visible" }
+  },
+  "styles": {
+    "s1": { "display": "block", "font": "Georgia", "fs": 16, "fw": 400, "color": "#202122", "bg": "#ffffff" },
+    "s4": { "display": "block", "font": "Georgia", "fs": 32, "fw": 700, "color": "#000000", "bg": "transparent" }
+  },
+  "inferred": {
+    "regions": [
+      { "id": "r1", "role": "header", "nodes": ["e2"], "conf": "high", "ev": ["tag:header", "pos:sticky", "geo:fullwidth-top"] },
+      { "id": "r2", "role": "main", "nodes": ["e9"], "conf": "high", "ev": ["tag:main", "stat:text-dense"] }
+    ],
+    "groups": []
+  }
+}
+```
+
+Note: the example is trimmed, so some referenced style IDs (`s2`, `s3`) are not shown.
 
 ---
 
@@ -381,6 +428,7 @@ When a budget is hit: prioritize viewport-visible content and high-confidence re
 | 14 | Style table (interning) in v0.1 | Inline styles per node | Never; it is simple and cuts size sharply |
 | 15 | Page coordinates for `bx` | Viewport coordinates | Reading boxes becomes a real pain |
 | 16 | Structural signature deferred to v0.2 | Include now | Phase 5 (computed from regions and groups) |
+| 17 | Sample repeated siblings only when they look like components (2+ element children) | Sample every repeated tag, which would cut article paragraphs | Phase 5 groups replace this heuristic |
 
 ---
 
